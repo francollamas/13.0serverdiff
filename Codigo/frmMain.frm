@@ -42,17 +42,6 @@ Begin VB.Form frmMain
       Left            =   480
       Top             =   540
    End
-   Begin VB.Timer packetResend 
-      Interval        =   10
-      Left            =   480
-      Top             =   60
-   End
-   Begin VB.Timer securityTimer 
-      Enabled         =   0   'False
-      Interval        =   10000
-      Left            =   960
-      Top             =   60
-   End
    Begin VB.CheckBox SUPERLOG 
       Caption         =   "log"
       Height          =   255
@@ -69,59 +58,17 @@ Begin VB.Form frmMain
       Top             =   480
       Width           =   1215
    End
-   Begin VB.Timer FX 
-      Enabled         =   0   'False
-      Interval        =   4000
-      Left            =   1440
-      Top             =   540
-   End
-   Begin VB.Timer Auditoria 
-      Enabled         =   0   'False
-      Interval        =   1000
-      Left            =   1440
-      Top             =   1020
-   End
-   Begin VB.Timer GameTimer 
-      Enabled         =   0   'False
-      Interval        =   40
-      Left            =   1440
-      Top             =   60
-   End
    Begin VB.Timer tLluviaEvent 
       Enabled         =   0   'False
       Interval        =   60000
       Left            =   960
       Top             =   1020
    End
-   Begin VB.Timer tLluvia 
-      Enabled         =   0   'False
-      Interval        =   500
-      Left            =   960
-      Top             =   540
-   End
    Begin VB.Timer AutoSave 
       Enabled         =   0   'False
       Interval        =   60000
       Left            =   480
       Top             =   1080
-   End
-   Begin VB.Timer npcataca 
-      Enabled         =   0   'False
-      Interval        =   4000
-      Left            =   1920
-      Top             =   1020
-   End
-   Begin VB.Timer KillLog 
-      Enabled         =   0   'False
-      Interval        =   60000
-      Left            =   1920
-      Top             =   60
-   End
-   Begin VB.Timer TIMER_AI 
-      Enabled         =   0   'False
-      Interval        =   100
-      Left            =   1935
-      Top             =   540
    End
    Begin VB.Frame Frame1 
       Caption         =   "BroadCast"
@@ -350,7 +297,7 @@ Sub CheckIdleUser()
     Next iUserIndex
 End Sub
 
-Private Sub Auditoria_Timer()
+Public Sub Auditoria_Timer()
 On Error GoTo errhand
 Static centinelSecs As Byte
 
@@ -364,8 +311,6 @@ If centinelSecs = 5 Then
 End If
 
 Call PasarSegundo 'sistema de desconexion de 10 segs
-
-Call ActualizaEstadisticasWeb
 
 Exit Sub
 
@@ -533,21 +478,9 @@ Close #N
 
 End
 
-Set SonidosMapas = Nothing
-
 End Sub
 
-Private Sub FX_Timer()
-On Error GoTo hayerror
-
-Call SonidosMapas.ReproducirSonidosDeMapas
-
-Exit Sub
-hayerror:
-
-End Sub
-
-Private Sub GameTimer_Timer()
+Public Sub GameTimer_Timer()
 '********************************************************
 'Author: Unknown
 'Last Modify Date: -
@@ -570,9 +503,6 @@ On Error GoTo hayerror
                     '[Alejo-18-5]
                     bEnviarStats = False
                     bEnviarAyS = False
-                    
-                    Call DoTileEvents(iUserIndex, .Pos.Map, .Pos.X, .Pos.Y)
-                    
                     
                     If .flags.Paralizado = 1 Then Call EfectoParalisisUser(iUserIndex)
                     If .flags.Ceguera = 1 Or .flags.Estupidez Then Call EfectoCegueEstu(iUserIndex)
@@ -723,19 +653,6 @@ On Error Resume Next
     Form_MouseMove 0, 0, 7725, 0
 End Sub
 
-Private Sub KillLog_Timer()
-On Error Resume Next
-If FileExist(App.Path & "\logs\connect.log", vbNormal) Then Kill App.Path & "\logs\connect.log"
-If FileExist(App.Path & "\logs\haciendo.log", vbNormal) Then Kill App.Path & "\logs\haciendo.log"
-If FileExist(App.Path & "\logs\stats.log", vbNormal) Then Kill App.Path & "\logs\stats.log"
-If FileExist(App.Path & "\logs\Asesinatos.log", vbNormal) Then Kill App.Path & "\logs\Asesinatos.log"
-If FileExist(App.Path & "\logs\HackAttemps.log", vbNormal) Then Kill App.Path & "\logs\HackAttemps.log"
-If Not FileExist(App.Path & "\logs\nokillwsapi.txt") Then
-    If FileExist(App.Path & "\logs\wsapi.log", vbNormal) Then Kill App.Path & "\logs\wsapi.log"
-End If
-
-End Sub
-
 Private Sub mnuServidor_Click()
 frmServidor.Visible = True
 End Sub
@@ -755,18 +672,7 @@ Visible = False
 
 End Sub
 
-Private Sub npcataca_Timer()
-
-On Error Resume Next
-Dim npc As Long
-
-For npc = 1 To LastNPC
-    Npclist(npc).CanAttack = 1
-Next npc
-
-End Sub
-
-Private Sub packetResend_Timer()
+Public Sub packetResend_Timer()
 '***************************************************
 'Autor: Juan Martín Sotuyo Dodero (Maraxus)
 'Last Modification: 04/01/07
@@ -790,15 +696,7 @@ Errhandler:
     Resume Next
 End Sub
 
-Private Sub securityTimer_Timer()
-
-#If SeguridadAlkon Then
-    Call Security.SecurityCheck
-#End If
-
-End Sub
-
-Private Sub TIMER_AI_Timer()
+Public Sub TIMER_AI_Timer()
 
 On Error GoTo ErrorHandler
 Dim NpcIndex As Long
@@ -865,21 +763,6 @@ ErrorHandler:
     Call MuereNpc(NpcIndex, 0)
 End Sub
 
-Private Sub tLluvia_Timer()
-On Error GoTo Errhandler
-
-Dim iCount As Long
-If Lloviendo Then
-   For iCount = 1 To LastUser
-        Call EfectoLluvia(iCount)
-   Next iCount
-End If
-
-Exit Sub
-Errhandler:
-Call LogError("tLluvia " & Err.Number & ": " & Err.description)
-End Sub
-
 Private Sub tLluviaEvent_Timer()
 
 On Error GoTo ErrorHandler
@@ -924,7 +807,6 @@ Private Sub tPiqueteC_Timer()
     Dim NuevaA As Boolean
    ' Dim NuevoL As Boolean
     Dim GI As Integer
-    
     Dim i As Long
     
 On Error GoTo Errhandler
@@ -932,28 +814,19 @@ On Error GoTo Errhandler
         With UserList(i)
             If .flags.UserLogged Then
                 If MapData(.Pos.Map, .Pos.X, .Pos.Y).trigger = eTrigger.ANTIPIQUETE Then
-                    .Counters.PiqueteC = .Counters.PiqueteC + 1
-                    Call WriteConsoleMsg(i, "¡¡¡Estás obstruyendo la vía pública, muévete o serás encarcelado!!!", FontTypeNames.FONTTYPE_INFO)
-                    
-                    If .Counters.PiqueteC > 23 Then
+                    If .flags.Muerto = 0 Then
+                        .Counters.PiqueteC = .Counters.PiqueteC + 1
+                        Call WriteConsoleMsg(i, "¡¡¡Estás obstruyendo la vía pública, muévete o serás encarcelado!!!", FontTypeNames.FONTTYPE_INFO)
+                        
+                        If .Counters.PiqueteC > 23 Then
+                            .Counters.PiqueteC = 0
+                            Call Encarcelar(i, TIEMPO_CARCEL_PIQUETE)
+                        End If
+                    Else
                         .Counters.PiqueteC = 0
-                        Call Encarcelar(i, TIEMPO_CARCEL_PIQUETE)
                     End If
                 Else
                     .Counters.PiqueteC = 0
-                End If
-                
-                If .flags.Muerto = 1 Then
-                    If .flags.Traveling = 1 Then
-                        If .Counters.goHome <= 0 Then
-                            Call FindLegalPos(i, Ciudades(.Hogar).Map, Ciudades(.Hogar).X, Ciudades(.Hogar).Y)
-                            Call WarpUserChar(i, Ciudades(.Hogar).Map, Ciudades(.Hogar).X, Ciudades(.Hogar).Y, True)
-                            Call WriteMultiMessage(i, eMessages.FinishHome)
-                            .flags.Traveling = 0
-                        Else
-                            .Counters.goHome = .Counters.goHome - 1
-                        End If
-                    End If
                 End If
                 
                 'ustedes se preguntaran que hace esto aca?
@@ -972,10 +845,6 @@ On Error GoTo Errhandler
                         Call SendData(SendTarget.ToGuildMembers, GI, PrepareMessageConsoleMsg("¡El clan ha pasado a tener alineación " & GuildAlignment(GI) & "!", FontTypeNames.FONTTYPE_GUILD))
                         Call LogClanes("¡El clan cambio de alineación!")
                     End If
-'                    If NuevoL Then
-'                        Call SendData(SendTarget.ToGuildMembers, GI, PrepareMessageConsoleMsg("¡El clan tiene un nuevo líder!", FontTypeNames.FONTTYPE_GUILD))
-'                        Call LogClanes("¡El clan tiene nuevo lider!")
-'                    End If
                 End If
                 
                 Call FlushBuffer(i)
@@ -983,7 +852,7 @@ On Error GoTo Errhandler
         End With
     Next i
 Exit Sub
-
+ 
 Errhandler:
     Call LogError("Error en tPiqueteC_Timer " & Err.Number & ": " & Err.description)
 End Sub
@@ -1089,3 +958,6 @@ End Sub
 '''''''''''''Compilar con UsarQueSocket = 3''''''''''''''''''''''''
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
+Private Sub txtChat_Change()
+
+End Sub

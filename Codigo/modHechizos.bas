@@ -229,6 +229,7 @@ With UserList(UserIndex)
             Call WriteConsoleMsg(UserIndex, "No tienes espacio para más hechizos.", FontTypeNames.FONTTYPE_INFO)
         Else
             .Stats.UserHechizos(j) = hIndex
+            Call WriteConsoleMsg(UserIndex, "Has aprendiendo el hechizo: " + Hechizos(hIndex).Nombre, FontTypeNames.FONTTYPE_INFO)
             Call UpdateUserHechizos(False, UserIndex, CByte(j))
             'Quitamos del inv el item
             Call QuitarUserInvItem(UserIndex, CByte(Slot), 1)
@@ -1410,6 +1411,10 @@ With Npclist(NpcIndex)
         If daño < 0 Then daño = 0
         
         .Stats.MinHp = .Stats.MinHp - daño
+        
+        ' Mandamos al cliente el daño ocasionado
+        Call SendData(SendTarget.ToNPCArea, NpcIndex, PrepareMessageCharMessageUpCreate(Npclist(NpcIndex).Char.CharIndex, 1, CStr(daño)))
+        
         Call WriteConsoleMsg(UserIndex, "¡Le has quitado " & daño & " puntos de vida a la criatura!", FontTypeNames.FONTTYPE_FIGHT)
         Call CalcularDarExp(UserIndex, NpcIndex, daño)
     
@@ -1446,10 +1451,13 @@ Sub InfoHechizo(ByVal UserIndex As Integer)
                 Call EnviarDatosASlot(UserIndex, PrepareMessageCreateFX(UserList(tUser).Char.CharIndex, Hechizos(SpellIndex).FXgrh, Hechizos(SpellIndex).loops))
                 Call EnviarDatosASlot(UserIndex, PrepareMessagePlayWave(Hechizos(SpellIndex).WAV, UserList(tUser).Pos.X, UserList(tUser).Pos.Y))
             Else
+            
+                'Call SendData(SendTarget.ToPCArea, tUser, PrepareMessageCreateCharParticle(UserList(tUser).Char.CharIndex, 45))
                 Call SendData(SendTarget.ToPCArea, tUser, PrepareMessageCreateFX(UserList(tUser).Char.CharIndex, Hechizos(SpellIndex).FXgrh, Hechizos(SpellIndex).loops))
                 Call SendData(SendTarget.ToPCArea, tUser, PrepareMessagePlayWave(Hechizos(SpellIndex).WAV, UserList(tUser).Pos.X, UserList(tUser).Pos.Y)) 'Esta linea faltaba. Pablo (ToxicWaste)
             End If
         ElseIf tNPC > 0 Then
+            'Call SendData(SendTarget.ToNPCArea, tNPC, PrepareMessageCreateCharParticle(Npclist(tNPC).Char.CharIndex, 84))
             Call SendData(SendTarget.ToNPCArea, tNPC, PrepareMessageCreateFX(Npclist(tNPC).Char.CharIndex, Hechizos(SpellIndex).FXgrh, Hechizos(SpellIndex).loops))
             Call SendData(SendTarget.ToNPCArea, tNPC, PrepareMessagePlayWave(Hechizos(SpellIndex).WAV, Npclist(tNPC).Pos.X, Npclist(tNPC).Pos.Y))
         End If
@@ -1749,6 +1757,9 @@ With UserList(TargetIndex)
         Call InfoHechizo(UserIndex)
         
         .Stats.MinHp = .Stats.MinHp - daño
+        
+        ' Mandamos al cliente el daño ocasionado
+        Call SendData(SendTarget.ToPCArea, TargetIndex, PrepareMessageCharMessageUpCreate(UserList(TargetIndex).Char.CharIndex, 1, CStr(daño)))
         
         Call WriteUpdateHP(TargetIndex)
         

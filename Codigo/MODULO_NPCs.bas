@@ -161,6 +161,7 @@ On Error GoTo Errhandler
             End If
             
             '[/KEVIN]
+            Call SubirSkill(UserIndex, eSkill.Supervivencia, True)
             Call WriteConsoleMsg(UserIndex, "¡Has matado a la criatura!", FontTypeNames.FONTTYPE_FIGHT)
             If .Stats.NPCsMuertos < 32000 Then _
                 .Stats.NPCsMuertos = .Stats.NPCsMuertos + 1
@@ -352,7 +353,6 @@ Private Sub ResetNpcMainInfo(ByVal NpcIndex As Integer)
         .GiveGLD = 0
         .Hostile = 0
         .InvReSpawn = 0
-        
         If .MaestroUser > 0 Then Call QuitarMascota(.MaestroUser, NpcIndex)
         If .MaestroNpc > 0 Then Call QuitarMascotaNpc(.MaestroNpc)
         
@@ -620,7 +620,7 @@ Public Sub MakeNPCChar(ByVal toMap As Boolean, sndIndex As Integer, NpcIndex As 
     MapData(Map, X, Y).NpcIndex = NpcIndex
     
     If Not toMap Then
-        Call WriteCharacterCreate(sndIndex, Npclist(NpcIndex).Char.body, Npclist(NpcIndex).Char.Head, Npclist(NpcIndex).Char.heading, Npclist(NpcIndex).Char.CharIndex, X, Y, 0, 0, 0, 0, 0, vbNullString, 0, 0)
+        Call WriteCharacterCreate(sndIndex, Npclist(NpcIndex).Char.body, Npclist(NpcIndex).Char.Head, Npclist(NpcIndex).Char.heading, Npclist(NpcIndex).Char.CharIndex, X, Y, Npclist(NpcIndex).Char.WeaponAnim, Npclist(NpcIndex).Char.ShieldAnim, 0, 0, Npclist(NpcIndex).Char.CascoAnim, vbNullString, 0, 0)
         Call FlushBuffer(sndIndex)
     Else
         Call AgregarNpc(NpcIndex)
@@ -714,7 +714,7 @@ On Error GoTo errh
                     .Pos.X = Npclist(NpcIndex).Pos.X
                     .Pos.Y = Npclist(NpcIndex).Pos.Y
                     MapData(.Pos.Map, .Pos.X, .Pos.Y).UserIndex = UserIndex
-                        
+                    Call DoTileEvents(UserIndex, .Pos.Map, .Pos.X, .Pos.Y)
                     ' Avisamos a los usuarios del area, y al propio usuario lo forzamos a moverse
                     Call SendData(SendTarget.ToPCAreaButIndex, UserIndex, PrepareMessageCharacterMove(UserList(UserIndex).Char.CharIndex, .Pos.X, .Pos.Y))
                     Call WriteForceCharMove(UserIndex, InvertHeading(nHeading))
@@ -768,17 +768,22 @@ End Function
 Sub NpcEnvenenarUser(ByVal UserIndex As Integer)
 '***************************************************
 'Author: Unknown
-'Last Modification: -
-'
+'Last Modification: 10/07/2010
+'10/07/2010: ZaMa - Now npcs can't poison dead users.
 '***************************************************
-
-Dim N As Integer
-N = RandomNumber(1, 100)
-If N < 30 Then
-    UserList(UserIndex).flags.Envenenado = 1
-    Call WriteConsoleMsg(UserIndex, "¡¡La criatura te ha envenenado!!", FontTypeNames.FONTTYPE_FIGHT)
-End If
-
+ 
+    Dim N As Integer
+    
+    With UserList(UserIndex)
+        If .flags.Muerto = 1 Then Exit Sub
+        
+        N = RandomNumber(1, 100)
+        If N < 30 Then
+            .flags.Envenenado = 1
+            Call WriteConsoleMsg(UserIndex, "¡¡La criatura te ha envenenado!!", FontTypeNames.FONTTYPE_FIGHT)
+        End If
+    End With
+    
 End Sub
 
 Function SpawnNpc(ByVal NpcIndex As Integer, Pos As WorldPos, ByVal FX As Boolean, ByVal Respawn As Boolean) As Integer
@@ -948,6 +953,10 @@ Public Function OpenNPC(ByVal NpcNumber As Integer, Optional ByVal Respawn = Tru
         .NPCtype = val(Leer.GetValue("NPC" & NpcNumber, "NpcType"))
         
         .Char.body = val(Leer.GetValue("NPC" & NpcNumber, "Body"))
+        .Char.ShieldAnim = val(Leer.GetValue("NPC" & NpcNumber, "EscudoAnim"))
+        .Char.WeaponAnim = val(Leer.GetValue("NPC" & NpcNumber, "ArmaAnim"))
+        .Char.CascoAnim = val(Leer.GetValue("NPC" & NpcNumber, "CascoAnim"))
+        
         .Char.Head = val(Leer.GetValue("NPC" & NpcNumber, "Head"))
         .Char.heading = val(Leer.GetValue("NPC" & NpcNumber, "Heading"))
         

@@ -586,10 +586,8 @@ With UserList(UserIndex)
     ' Total Items
     .Invent.NroItems = Slot
     
-    #If ConUpTime Then
-        .LogOnTime = Now
-        .UpTime = 0
-    #End If
+    .LogOnTime = Now
+    .UpTime = 0
 
 End With
 
@@ -652,8 +650,6 @@ On Error GoTo Errhandler
     If UserList(UserIndex).flags.UserLogged Then
         If NumUsers > 0 Then NumUsers = NumUsers - 1
         Call CloseUser(UserIndex)
-        
-        Call EstadisticasWeb.Informar(CANTIDAD_ONLINE, NumUsers)
     Else
         Call ResetUserSlot(UserIndex)
     End If
@@ -830,11 +826,11 @@ Public Function EnviarDatosASlot(ByVal UserIndex As Integer, ByRef Datos As Stri
 #If UsarQueSocket = 1 Then '**********************************************
     On Error GoTo Err
     
-    Dim Ret As Long
+    Dim ret As Long
     
-    Ret = WsApiEnviar(UserIndex, Datos)
+    ret = WsApiEnviar(UserIndex, Datos)
     
-    If Ret <> 0 And Ret <> WSAEWOULDBLOCK Then
+    If ret <> 0 And ret <> WSAEWOULDBLOCK Then
         ' Close the socket avoiding any critical error
         Call CloseSocketSL(UserIndex)
         Call Cerrar_Usuario(UserIndex)
@@ -861,14 +857,14 @@ Err:
     '--1) WSAEWOULDBLOCK
     '--2) ERROR
     
-    Dim Ret As Long
+    Dim ret As Long
 
-    Ret = frmMain.Serv.Enviar(.ConnID, Datos, Len(Datos))
+    ret = frmMain.Serv.Enviar(.ConnID, Datos, Len(Datos))
             
-    If Ret = 1 Then
+    If ret = 1 Then
         ' WSAEWOULDBLOCK, put the data again in the outgoingData Buffer
         Call .outgoingData.WriteASCIIStringFixed(Datos)
-    ElseIf Ret = 2 Then
+    ElseIf ret = 2 Then
         'Close socket avoiding any critical error
         Call CloseSocketSL(UserIndex)
         Call Cerrar_Usuario(UserIndex)
@@ -1259,16 +1255,14 @@ With UserList(UserIndex)
     
     
     ''[EL OSO]: TRAIGO ESTO ACA ARRIBA PARA DARLE EL IP!
-    #If ConUpTime Then
-        .LogOnTime = Now
-    #End If
+    .LogOnTime = Now
     
     'Crea  el personaje del usuario
     Call MakeUserChar(True, .Pos.Map, UserIndex, .Pos.Map, .Pos.X, .Pos.Y)
     
     Call WriteUserCharIndexInServer(UserIndex)
-    ''[/el oso]
-    
+    Call DoTileEvents(UserIndex, .Pos.Map, .Pos.X, .Pos.Y)
+
     Call CheckUserLevel(UserIndex)
     Call WriteUpdateUserStats(UserIndex)
     
@@ -1302,8 +1296,6 @@ With UserList(UserIndex)
     'usado para borrar Pjs
     Call WriteVar(CharPath & .name & ".chr", "INIT", "Logged", "1")
     
-    Call EstadisticasWeb.Informar(CANTIDAD_ONLINE, NumUsers)
-    
     MapInfo(.Pos.Map).NumUsers = MapInfo(.Pos.Map).NumUsers + 1
     
     If .Stats.SkillPts > 0 Then
@@ -1315,8 +1307,6 @@ With UserList(UserIndex)
         Call SendData(SendTarget.ToAll, 0, PrepareMessageConsoleMsg("Record de usuarios conectados simultaneamente." & "Hay " & NumUsers & " usuarios.", FontTypeNames.FONTTYPE_INFO))
         recordusuarios = NumUsers
         Call WriteVar(IniPath & "Server.ini", "INIT", "Record", str(recordusuarios))
-        
-        Call EstadisticasWeb.Informar(RECORD_USUARIOS, recordusuarios)
     End If
     
     If .NroMascotas > 0 And MapInfo(.Pos.Map).Pk Then
@@ -1377,10 +1367,6 @@ With UserList(UserIndex)
     Call Statistics.UserConnected(UserIndex)
     
     Call MostrarNumUsers
-    
-    #If SeguridadAlkon Then
-        Call Security.UserConnected(UserIndex)
-    #End If
 
     N = FreeFile
     Open App.Path & "\logs\numusers.log" For Output As N

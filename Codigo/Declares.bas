@@ -32,9 +32,6 @@ Option Explicit
 ''
 ' Modulo de declaraciones. Aca hay de todo.
 '
-#If SeguridadAlkon Then
-Public aDos As New clsAntiDoS
-#End If
 
 Public aClon As New clsAntiMassClon
 Public TrashCollector As New Collection
@@ -68,6 +65,8 @@ Public Const iGaleraCiuda = 397
 Public Const iGaleraPk = 398
 Public Const iGaleonCiuda = 399
 Public Const iGaleonPk = 400
+
+Public Declare Function timeGetTime Lib "winmm.dll" () As Long
 
 Public Enum iMinerales
     HierroCrudo = 192
@@ -144,8 +143,6 @@ End Type
 
 Public MiCabecera As tCabecera
 
-'Barrin 3/10/03
-'Cambiado a 2 segundos el 30/11/07
 Public Const TIEMPO_INICIOMEDITAR As Integer = 2000
 
 Public Const NingunEscudo As Integer = 2
@@ -276,8 +273,8 @@ Public Const TAG_USER_INVISIBLE As String = "[INVISIBLE]"
 Public Const TAG_CONSULT_MODE As String = "[CONSULTA]"
 
 Public Const MAXREP As Long = 6000000
-Public Const MAXORO As Long = 90000000
-Public Const MAXEXP As Long = 99999999
+Public Const MAXORO As Long = 200000000
+Public Const MAXEXP As Long = 999999999
 
 Public Const MAXUSERMATADOS As Long = 65000
 
@@ -555,7 +552,7 @@ Public Const FONTTYPE_CONSEJOCAOSVesA As String = "~255~50~0~1~0"
 Public Const FONTTYPE_CENTINELA As String = "~0~255~0~1~0"
 
 'Estadisticas
-Public Const STAT_MAXELV As Byte = 255
+Public Const STAT_MAXELV As Byte = 50
 Public Const STAT_MAXHP As Integer = 999
 Public Const STAT_MAXSTA As Integer = 999
 Public Const STAT_MAXMAN As Integer = 9999
@@ -1104,6 +1101,8 @@ Public Type UserFlags
     
     lastMap As Integer
     Traveling As Byte 'Travelin Band ¿?
+    
+    lastMeditar As Long
 End Type
 
 Public Type UserCounters
@@ -1227,15 +1226,8 @@ Public Type User
     Reputacion As tReputacion
     
     Faccion As tFacciones
-    
-#If SeguridadAlkon Then
-    Security As SecurityData
-#End If
-
-#If ConUpTime Then
     LogOnTime As Date
     UpTime As Long
-#End If
 
     ip As String
     
@@ -1283,6 +1275,7 @@ End Type
 Public Type NpcCounters
     Paralisis As Integer
     TiempoExistencia As Long
+    intervaloGolpe As Long
 End Type
 
 Public Type NPCFlags
@@ -1389,6 +1382,7 @@ Public Type npc
     flags As NPCFlags
     Contadores As NpcCounters
     
+    
     Invent As Inventario
     CanAttack As Byte
     
@@ -1442,6 +1436,7 @@ Type MapInfo
     InviSinEfecto As Byte
     ResuSinEfecto As Byte
     
+    OnDeathGoTo As WorldPos
     RoboNpcsPermitido As Byte
     
     Terreno As String
@@ -1450,6 +1445,22 @@ Type MapInfo
     BackUp As Byte
 End Type
 
+Public Enum eTerrain
+    terrain_bosque = 0
+    terrain_nieve = 1
+    terrain_desierto = 2
+    terrain_ciudad = 3
+    terrain_campo = 4
+    terrain_dungeon = 5
+End Enum
+ 
+Public Enum eRestrict
+    restrict_no = 0
+    restrict_newbie = 1
+    restrict_armada = 2
+    restrict_caos = 3
+    restrict_faccion = 4
+End Enum
 
 '********** V A R I A B L E S     P U B L I C A S ***********
 
@@ -1565,7 +1576,6 @@ Public Libertad As WorldPos
 
 Public Ayuda As New cCola
 Public ConsultaPopular As New ConsultasPopulares
-Public SonidosMapas As New SoundMapInfo
 
 Public Declare Function GetTickCount Lib "kernel32" () As Long
 
@@ -1573,12 +1583,6 @@ Public Declare Function writeprivateprofilestring Lib "kernel32" Alias "WritePri
 Public Declare Function GetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationname As String, ByVal lpKeyname As Any, ByVal lpdefault As String, ByVal lpreturnedstring As String, ByVal nsize As Long, ByVal lpfilename As String) As Long
 
 Public Declare Sub ZeroMemory Lib "kernel32.dll" Alias "RtlZeroMemory" (ByRef destination As Any, ByVal length As Long)
-
-Public Enum e_ObjetosCriticos
-    Manzana = 1
-    Manzana2 = 2
-    ManzanaNewbie = 467
-End Enum
 
 Public Enum eMessages
     DontSeeAnything

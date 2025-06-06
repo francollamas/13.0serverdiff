@@ -33,28 +33,33 @@ Public Function TieneObjetosRobables(ByVal UserIndex As Integer) As Boolean
 '***************************************************
 'Author: Unknown
 'Last Modification: -
-'
+' 22/05/2010: Los items newbies ya no son robables.
 '***************************************************
-
+ 
 '17/09/02
 'Agregue que la función se asegure que el objeto no es un barco
-
-On Error Resume Next
-
-Dim i As Integer
-Dim ObjIndex As Integer
-
-For i = 1 To UserList(UserIndex).CurrentInventorySlots
-    ObjIndex = UserList(UserIndex).Invent.Object(i).ObjIndex
-    If ObjIndex > 0 Then
+ 
+On Error GoTo Errhandler
+ 
+    Dim i As Integer
+    Dim ObjIndex As Integer
+    
+    For i = 1 To UserList(UserIndex).CurrentInventorySlots
+        ObjIndex = UserList(UserIndex).Invent.Object(i).ObjIndex
+        If ObjIndex > 0 Then
             If (ObjData(ObjIndex).OBJType <> eOBJType.otLlaves And _
-                ObjData(ObjIndex).OBJType <> eOBJType.otBarcos) Then
+                ObjData(ObjIndex).OBJType <> eOBJType.otBarcos And _
+                Not ItemNewbie(ObjIndex)) Then
                   TieneObjetosRobables = True
                   Exit Function
             End If
+        End If
+    Next i
     
-    End If
-Next i
+    Exit Function
+ 
+Errhandler:
+    Call LogError("Error en TieneObjetosRobables. Error: " & Err.Number & " - " & Err.description)
 End Function
 
 Function ClasePuedeUsarItem(ByVal UserIndex As Integer, ByVal ObjIndex As Integer, Optional ByRef sMotivo As String) As Boolean
@@ -96,9 +101,9 @@ Sub QuitarNewbieObj(ByVal UserIndex As Integer)
 'Last Modification: -
 '
 '***************************************************
-
+ 
 Dim j As Integer
-
+ 
 With UserList(UserIndex)
     For j = 1 To UserList(UserIndex).CurrentInventorySlots
         If .Invent.Object(j).ObjIndex > 0 Then
@@ -112,7 +117,7 @@ With UserList(UserIndex)
     
     '[Barrin 17-12-03] Si el usuario dejó de ser Newbie, y estaba en el Newbie Dungeon
     'es transportado a su hogar de origen ;)
-    If UCase$(MapInfo(.Pos.Map).Restringir) = "NEWBIE" Then
+    If MapInfo(.Pos.Map).Restringir = eRestrict.restrict_newbie Then
         
         Dim DeDonde As WorldPos
         
@@ -132,7 +137,7 @@ With UserList(UserIndex)
     End If
     '[/Barrin]
 End With
-
+ 
 End Sub
 
 Sub LimpiarInventario(ByVal UserIndex As Integer)
@@ -225,6 +230,9 @@ With UserList(UserIndex)
                 Cantidad = 500000
             End If
             
+            ' Mandamos al cliente la cantidad que tiro
+            Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageCharMessageUpCreate(UserList(UserIndex).Char.CharIndex, 2, "-" + CStr(Cantidad)))
+            
             Do While (Cantidad > 0)
                 
                 If Cantidad > MAX_INVENTORY_OBJS And .Stats.GLD > MAX_INVENTORY_OBJS Then
@@ -260,11 +268,11 @@ With UserList(UserIndex)
                 End If
                 
             Loop
+            
             If TeniaOro = .Stats.GLD Then Extra = 0
             If Extra > 0 Then
                 .Stats.GLD = .Stats.GLD - Extra
             End If
-        
     End If
 End With
 
@@ -544,6 +552,10 @@ Sub GetObj(ByVal UserIndex As Integer)
                 ' Oro directo a la billetera!
                 If Obj.OBJType = otGuita Then
                     .Stats.GLD = .Stats.GLD + MiObj.Amount
+                    
+                    ' Mandamos al cliente la cantidad de oro que agarro
+                    Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageCharMessageUpCreate(UserList(UserIndex).Char.CharIndex, 2, "+" + CStr(MiObj.Amount)))
+        
                     'Quitamos el objeto
                     Call EraseObj(MapData(.Pos.Map, X, Y).ObjInfo.Amount, .Pos.Map, .Pos.X, .Pos.Y)
                         
@@ -1095,12 +1107,6 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte)
                 Call WriteUpdateHungerAndThirst(UserIndex)
                 'Sonido
                 
-                If ObjIndex = e_ObjetosCriticos.Manzana Or ObjIndex = e_ObjetosCriticos.Manzana2 Or ObjIndex = e_ObjetosCriticos.ManzanaNewbie Then
-                    Call SonidosMapas.ReproducirSonido(SendTarget.ToPCArea, UserIndex, e_SoundIndex.MORFAR_MANZANA)
-                Else
-                    Call SonidosMapas.ReproducirSonido(SendTarget.ToPCArea, UserIndex, e_SoundIndex.SOUND_COMIDA)
-                End If
-                
                 'Quitamos del inv el item
                 Call QuitarUserInvItem(UserIndex, Slot, 1)
                 
@@ -1631,7 +1637,7 @@ Sub TirarTodosLosItems(ByVal UserIndex As Integer)
                         End If
                     End If
                     
-                    Call Tilelibre(.Pos, NuevaPos, MiObj, DropAgua, True)
+                    Call TileLibre(.Pos, NuevaPos, MiObj, DropAgua, True)
                     
                     If NuevaPos.X <> 0 And NuevaPos.Y <> 0 Then
                         Call DropObj(UserIndex, i, MAX_INVENTORY_OBJS, NuevaPos.Map, NuevaPos.X, NuevaPos.Y)
@@ -1681,7 +1687,7 @@ Sub TirarTodosLosItemsNoNewbies(ByVal UserIndex As Integer)
                     MiObj.ObjIndex = ItemIndex
                     'Pablo (ToxicWaste) 24/01/2007
                     'Tira los Items no newbies en todos lados.
-                    Tilelibre .Pos, NuevaPos, MiObj, True, True
+                    TileLibre .Pos, NuevaPos, MiObj, True, True
                     If NuevaPos.X <> 0 And NuevaPos.Y <> 0 Then
                         Call DropObj(UserIndex, i, MAX_INVENTORY_OBJS, NuevaPos.Map, NuevaPos.X, NuevaPos.Y)
                     End If
@@ -1715,7 +1721,7 @@ Sub TirarTodosLosItemsEnMochila(ByVal UserIndex As Integer)
                     'Creo MiObj
                     MiObj.Amount = .Invent.Object(i).Amount
                     MiObj.ObjIndex = ItemIndex
-                    Tilelibre .Pos, NuevaPos, MiObj, True, True
+                    TileLibre .Pos, NuevaPos, MiObj, True, True
                     If NuevaPos.X <> 0 And NuevaPos.Y <> 0 Then
                         Call DropObj(UserIndex, i, MAX_INVENTORY_OBJS, NuevaPos.Map, NuevaPos.X, NuevaPos.Y)
                     End If

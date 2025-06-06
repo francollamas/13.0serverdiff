@@ -412,9 +412,6 @@ On Error Resume Next
         frmCargando.Label1(2).Caption = "Cargando Mapas"
         Call LoadMapData
     End If
-    
-    
-    Call SonidosMapas.LoadSoundMapInfo
 
     Call generateMatrix(MATRIX_INITIAL_MAP)
     
@@ -436,19 +433,8 @@ On Error Resume Next
     
     With frmMain
         .AutoSave.Enabled = True
-        .tLluvia.Enabled = True
         .tPiqueteC.Enabled = True
-        .GameTimer.Enabled = True
         .tLluviaEvent.Enabled = True
-        .FX.Enabled = True
-        .Auditoria.Enabled = True
-        .KillLog.Enabled = True
-        .TIMER_AI.Enabled = True
-        .npcataca.Enabled = True
-        
-#If SeguridadAlkon Then
-        .securityTimer.Enabled = True
-#End If
     End With
     
     '¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿
@@ -458,8 +444,14 @@ On Error Resume Next
     
 #If UsarQueSocket = 1 Then
     
+    If LastSockListen >= 0 Then Call apiclosesocket(LastSockListen) 'Cierra el socket de escucha
     Call IniciaWsApi(frmMain.hWnd)
     SockListen = ListenForConnect(Puerto, hWndMsg, "")
+    If SockListen <> -1 Then
+        Call WriteVar(IniPath & "Server.ini", "INIT", "LastSockListen", SockListen) ' Guarda el socket escuchando
+    Else
+        MsgBox "Ha ocurrido un error al iniciar el socket del Servidor.", vbCritical + vbOKOnly
+    End If
     
 #ElseIf UsarQueSocket = 0 Then
     
@@ -507,7 +499,8 @@ On Error Resume Next
     End If
     
     tInicioServer = GetTickCount() And &H7FFFFFFF
-    Call InicializaEstadisticas
+    
+    Call MainLoop
 
 End Sub
 
@@ -528,21 +521,21 @@ Function ReadField(ByVal Pos As Integer, ByRef Text As String, ByVal SepASCII As
 '*****************************************************************
 
     Dim i As Long
-    Dim LastPos As Long
+    Dim lastPos As Long
     Dim CurrentPos As Long
     Dim delimiter As String * 1
     
     delimiter = Chr$(SepASCII)
     
     For i = 1 To Pos
-        LastPos = CurrentPos
-        CurrentPos = InStr(LastPos + 1, Text, delimiter, vbBinaryCompare)
+        lastPos = CurrentPos
+        CurrentPos = InStr(lastPos + 1, Text, delimiter, vbBinaryCompare)
     Next i
     
     If CurrentPos = 0 Then
-        ReadField = mid$(Text, LastPos + 1, Len(Text) - LastPos)
+        ReadField = mid$(Text, lastPos + 1, Len(Text) - lastPos)
     Else
-        ReadField = mid$(Text, LastPos + 1, CurrentPos - LastPos - 1)
+        ReadField = mid$(Text, lastPos + 1, CurrentPos - lastPos - 1)
     End If
 End Function
 
@@ -1084,29 +1077,6 @@ Public Function Intemperie(ByVal UserIndex As Integer) As Boolean
     If IsArena(UserIndex) Then Intemperie = False
 End Function
 
-Public Sub EfectoLluvia(ByVal UserIndex As Integer)
-'***************************************************
-'Author: Unknown
-'Last Modification: -
-'
-'***************************************************
-
-On Error GoTo Errhandler
-
-    If UserList(UserIndex).flags.UserLogged Then
-        If Intemperie(UserIndex) Then
-            Dim modifi As Long
-            modifi = Porcentaje(UserList(UserIndex).Stats.MaxSta, 3)
-            Call QuitarSta(UserIndex, modifi)
-            Call FlushBuffer(UserIndex)
-        End If
-    End If
-    
-    Exit Sub
-Errhandler:
-    LogError ("Error en EfectoLluvia")
-End Sub
-
 Public Sub TiempoInvocacion(ByVal UserIndex As Integer)
 '***************************************************
 'Author: Unknown
@@ -1284,10 +1254,10 @@ End Sub
 Public Sub EfectoInvisibilidad(ByVal UserIndex As Integer)
 '***************************************************
 'Author: Unknown
-'Last Modification: -
-'
+'Last Modification: 16/09/2010 (ZaMa)
+'16/09/2010: ZaMa - Al perder el invi cuando navegas, no se manda el mensaje de sacar invi (ya estas visible).
 '***************************************************
-
+ 
     With UserList(UserIndex)
         If .Counters.Invisibilidad < IntervaloInvisible Then
             .Counters.Invisibilidad = .Counters.Invisibilidad + 1
@@ -1296,12 +1266,16 @@ Public Sub EfectoInvisibilidad(ByVal UserIndex As Integer)
             .flags.invisible = 0
             If .flags.Oculto = 0 Then
                 Call WriteConsoleMsg(UserIndex, "Has vuelto a ser visible.", FontTypeNames.FONTTYPE_INFO)
-                Call SetInvisible(UserIndex, .Char.CharIndex, False)
-                'Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageSetInvisible(.Char.CharIndex, False))
+                
+                ' Si navega ya esta visible..
+                If Not .flags.Navegando = 1 Then
+                    Call SetInvisible(UserIndex, .Char.CharIndex, False)
+                End If
+                
             End If
         End If
     End With
-
+ 
 End Sub
 
 
@@ -1632,25 +1606,6 @@ Sub GuardarUsuarios()
     Call SendData(SendTarget.ToAll, 0, PrepareMessagePauseToggle())
 
     haciendoBK = False
-End Sub
-
-
-Sub InicializaEstadisticas()
-'***************************************************
-'Author: Unknown
-'Last Modification: -
-'
-'***************************************************
-
-    Dim Ta As Long
-    Ta = GetTickCount() And &H7FFFFFFF
-    
-    Call EstadisticasWeb.Inicializa(frmMain.hWnd)
-    Call EstadisticasWeb.Informar(CANTIDAD_MAPAS, NumMaps)
-    Call EstadisticasWeb.Informar(CANTIDAD_ONLINE, NumUsers)
-    Call EstadisticasWeb.Informar(UPTIME_SERVER, (Ta - tInicioServer) / 1000)
-    Call EstadisticasWeb.Informar(RECORD_USUARIOS, recordusuarios)
-
 End Sub
 
 Public Sub FreeNPCs()
